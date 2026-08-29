@@ -1,5 +1,13 @@
-from src.storage.engine import StorageEngine
 
+from src.storage.engine import StorageEngine
+from src.storage.records import (
+    TYPE_DELETE,
+    TYPE_PUT,
+    decode_payload,
+    decode_record,
+    encode_delete,
+    encode_put,
+)
 
 def test_put_and_get(tmp_path):
     db = StorageEngine(str(tmp_path / "test.db"))
@@ -136,3 +144,116 @@ def test_search_engine_interface(tmp_path):
 
     assert documents["doc1"] == "Python programming language"
     assert documents["doc2"] == "Storage engine implementation"
+
+def test_decode_payload_rejects_incomplete_key_length():
+    try:
+        decode_payload(TYPE_PUT, b"\x00\x00")
+        assert False, "Expected incomplete key length error"
+    except ValueError as error:
+        assert str(error) == "Incomplete key length"
+
+
+def test_decode_payload_rejects_incomplete_key():
+    payload = b"\x00\x00\x00\x05abc"
+
+    try:
+        decode_payload(TYPE_PUT, payload)
+        assert False, "Expected incomplete key error"
+    except ValueError as error:
+        assert str(error) == "Incomplete key"
+
+
+def test_decode_payload_rejects_incomplete_value_length():
+    payload = (
+        b"\x00\x00\x00\x03"
+        + b"abc"
+        + b"\x00\x00"
+    )
+
+    try:
+        decode_payload(TYPE_PUT, payload)
+        assert False, "Expected incomplete value length error"
+    except ValueError as error:
+        assert str(error) == "Incomplete value length"
+
+
+def test_decode_payload_rejects_incomplete_value():
+    payload = (
+        b"\x00\x00\x00\x03"
+        + b"abc"
+        + b"\x00\x00\x00\x05"
+        + b"xy"
+    )
+
+    try:
+        decode_payload(TYPE_PUT, payload)
+        assert False, "Expected incomplete value error"
+    except ValueError as error:
+        assert str(error) == "Incomplete value"
+
+
+def test_decode_payload_rejects_unknown_record_type():
+    payload = b"\x00\x00\x00\x03abc"
+
+    try:
+        decode_payload(99, payload)
+        assert False, "Expected unknown record type error"
+    except ValueError as error:
+        assert str(error) == "Unknown record type"
+def test_encode_put_round_trip():
+    record = encode_put("name", "Moonpie")
+
+    record_type, payload = decode_record(record)
+    key, value = decode_payload(record_type, payload)
+
+    assert record_type == TYPE_PUT
+    assert key == "name"
+    assert value == "Moonpie"
+
+
+def test_encode_delete_round_trip():
+    record = encode_delete("name")
+
+    record_type, payload = decode_record(record)
+    key, value = decode_payload(record_type, payload)
+
+    assert record_type == TYPE_DELETE
+    assert key == "name"
+    assert value is None
+
+
+def test_unicode_round_trip():
+    record = encode_put("名前", "こんにちは")
+
+    record_type, payload = decode_record(record)
+    key, value = decode_payload(record_type, payload)
+
+    assert key == "名前"
+    assert value == "こんにちは"
+
+
+def test_decode_record_rejects_truncated_record():
+    record = encode_put("name", "Moonpie")
+
+    truncated = record[:-1]
+
+    try:
+        decode_record(truncated)
+        assert False, "Expected incomplete record error"
+    except ValueError as error:
+        assert str(error) == "Incomplete record"
+
+def test_decode_record_rejects_unknown_record_type():
+    record = encode_put("name", "Moonpie")
+
+    header = bytearray(record[:10])
+
+    header[5] = 99
+
+    corrupted_record = bytes(header) + record[10:]
+
+    try:
+        decode_record(corrupted_record)
+        assert False, "Expected unknown record type error"
+    except ValueError as error:
+        assert str(error) == "Unknown record type"
