@@ -1,58 +1,100 @@
+import argparse
+
 from src.search.engine import SearchEngine
 
 
+def create_parser():
+    parser = argparse.ArgumentParser(
+        prog="zero-deps",
+        description="Zero Dependency Search Engine"
+    )
+
+    subparsers = parser.add_subparsers(
+        dest="command",
+        required=True
+    )
+
+    # Add
+    add_parser = subparsers.add_parser(
+        "add",
+        help="Add a document"
+    )
+    add_parser.add_argument("document_id", type=int)
+    add_parser.add_argument("text")
+
+    # Search
+    search_parser = subparsers.add_parser(
+        "search",
+        help="Search documents"
+    )
+    search_parser.add_argument("query")
+
+    # Update
+    update_parser = subparsers.add_parser(
+        "update",
+        help="Update a document"
+    )
+    update_parser.add_argument("document_id", type=int)
+    update_parser.add_argument("text")
+
+    # Remove
+    remove_parser = subparsers.add_parser(
+        "remove",
+        help="Remove a document"
+    )
+    remove_parser.add_argument("document_id", type=int)
+        # Stats
+    subparsers.add_parser(
+        "stats",
+        help="Show index statistics"
+    )
+
+    return parser
+
+
 def main():
-    engine = SearchEngine()
+    parser = create_parser()
+    args = parser.parse_args()
 
-    while True:
-        print("\n================================")
-        print("       ZERO-DEPS SEARCH")
-        print("================================")
-        print("1. Add document")
-        print("2. Search")
-        print("3. Update document")
-        print("4. Remove document")
-        print("5. Exit")
+    engine = SearchEngine("data/index.json")
 
-        choice = input("\nChoose an option: ").strip()
+    if args.command == "add":
+        engine.add_document(args.document_id, args.text)
+        print(f"Document {args.document_id} added.")
 
-        if choice == "1":
-            document_id = int(input("Document ID: "))
-            text = input("Text: ")
+    elif args.command == "search":
+        results = engine.search(args.query)
 
-            engine.add_document(document_id, text)
+        if not results:
+            print("No documents found.")
+            return
 
-            print("Document added successfully.")
+        print("Search results:")
+        for document_id in sorted(results):
+            print(f"- Document {document_id}")
 
-        elif choice == "2":
-            query = input("Search query: ")
+    elif args.command == "update":
+        engine.update_document(args.document_id, args.text)
+        print(f"Document {args.document_id} updated.")
 
-            results = engine.search(query)
+    elif args.command == "remove":
+        engine.remove_document(args.document_id)
+        print(f"Document {args.document_id} removed.")
+    elif args.command == "stats":
+        document_count = len(engine.index.term_frequencies)
+        unique_terms = len(engine.index.index)
 
-            print(f"Results: {results}")
+        total_postings = sum(
+            len(document_ids)
+            for document_ids in engine.index.index.values()
+        )
 
-        elif choice == "3":
-            document_id = int(input("Document ID: "))
-            text = input("New text: ")
-
-            engine.update_document(document_id, text)
-
-            print("Document updated successfully.")
-
-        elif choice == "4":
-            document_id = int(input("Document ID: "))
-
-            engine.remove_document(document_id)
-
-            print("Document removed successfully.")
-
-        elif choice == "5":
-            print("Goodbye!")
-            break
-
-        else:
-            print("Invalid option. Please choose 1-5.")
-
+        print("Index Statistics")
+        print("----------------")
+        print(f"Documents       : {document_count}")
+        print(f"Unique terms    : {unique_terms}")
+        print(f"Index entries   : {total_postings}")
+        print(f"Cache capacity  : {engine.index.cache.capacity}")
 
 if __name__ == "__main__":
     main()
