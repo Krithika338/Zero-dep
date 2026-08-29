@@ -257,3 +257,167 @@ def test_decode_record_rejects_unknown_record_type():
         assert False, "Expected unknown record type error"
     except ValueError as error:
         assert str(error) == "Unknown record type"
+
+def test_recovery_preserves_multiple_valid_records(tmp_path):
+    path = str(tmp_path / "test.db")
+
+    db = StorageEngine(path)
+
+    db.put("name", "Moonpie")
+    db.put("course", "Python")
+    db.put("project", "Storage Engine")
+
+    with open(path, "ab") as file:
+        file.write(b"ZDEP")
+
+    db = StorageEngine(path)
+
+    assert db.get("name") == "Moonpie"
+    assert db.get("course") == "Python"
+    assert db.get("project") == "Storage Engine"
+
+    assert list(db.scan()) == [
+        ("name", "Moonpie"),
+        ("course", "Python"),
+        ("project", "Storage Engine"),
+    ]
+
+def test_storage_engine_context_manager(tmp_path):
+    path = str(tmp_path / "test.db")
+
+    with StorageEngine(path) as db:
+        db.put("name", "Moonpie")
+
+    db = StorageEngine(path)
+
+    assert db.get("name") == "Moonpie"
+
+def test_exists(tmp_path):
+    db = StorageEngine(str(tmp_path / "test.db"))
+
+    assert db.exists("name") is False
+
+    db.put("name", "Moonpie")
+
+    assert db.exists("name") is True
+
+
+def test_exists_after_delete(tmp_path):
+    db = StorageEngine(str(tmp_path / "test.db"))
+
+    db.put("name", "Moonpie")
+    db.delete("name")
+
+    assert db.exists("name") is False
+
+
+def test_count(tmp_path):
+    db = StorageEngine(str(tmp_path / "test.db"))
+
+    assert db.count() == 0
+
+    db.put("name", "Moonpie")
+    db.put("course", "Python")
+
+    assert db.count() == 2
+
+    db.put("name", "Krithika")
+
+    assert db.count() == 2
+
+    db.delete("course")
+
+    assert db.count() == 1
+
+def test_get_rejects_empty_key(tmp_path):
+    db = StorageEngine(str(tmp_path / "test.db"))
+
+    try:
+        db.get("")
+        assert False, "Expected empty key to be rejected"
+    except ValueError as error:
+        assert str(error) == "Key cannot be empty"
+
+
+def test_exists_rejects_empty_key(tmp_path):
+    db = StorageEngine(str(tmp_path / "test.db"))
+
+    try:
+        db.exists("")
+        assert False, "Expected empty key to be rejected"
+    except ValueError as error:
+        assert str(error) == "Key cannot be empty"
+
+
+def test_get_rejects_non_string_key(tmp_path):
+    db = StorageEngine(str(tmp_path / "test.db"))
+
+    try:
+        db.get(123)
+        assert False, "Expected non-string key to be rejected"
+    except TypeError as error:
+        assert str(error) == "Key must be a string"
+
+
+def test_exists_rejects_non_string_key(tmp_path):
+    db = StorageEngine(str(tmp_path / "test.db"))
+
+    try:
+        db.exists(123)
+        assert False, "Expected non-string key to be rejected"
+    except TypeError as error:
+        assert str(error) == "Key must be a string"
+
+def test_compact_removes_old_versions(tmp_path):
+    path = str(tmp_path / "test.db")
+
+    db = StorageEngine(path)
+
+    db.put("name", "Moonpie")
+    db.put("name", "Krithika")
+    db.put("name", "Final")
+
+    before_size = (tmp_path / "test.db").stat().st_size
+
+    db.compact()
+
+    after_size = (tmp_path / "test.db").stat().st_size
+
+    assert db.get("name") == "Final"
+    assert list(db.scan()) == [("name", "Final")]
+    assert after_size < before_size
+
+
+def test_compact_removes_deleted_records(tmp_path):
+    path = str(tmp_path / "test.db")
+
+    db = StorageEngine(path)
+
+    db.put("name", "Moonpie")
+    db.put("course", "Python")
+    db.delete("name")
+
+    db.compact()
+
+    assert db.get("name") is None
+    assert db.get("course") == "Python"
+    assert list(db.scan()) == [("course", "Python")]
+
+
+def test_compact_preserves_data_after_restart(tmp_path):
+    path = str(tmp_path / "test.db")
+
+    db = StorageEngine(path)
+
+    db.put("name", "Moonpie")
+    db.put("name", "Krithika")
+    db.put("course", "Python")
+
+    db.compact()
+
+    db = StorageEngine(path)
+
+    assert list(db.scan()) == [
+        ("name", "Krithika"),
+        ("course", "Python"),
+    ]
