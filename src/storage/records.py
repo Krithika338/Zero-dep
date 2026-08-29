@@ -21,6 +21,15 @@ def calculate_checksum(data: bytes) -> bytes:
 
 
 def encode_put(key: str, value: str) -> bytes:
+    if not isinstance(key, str):
+        raise TypeError("Key must be a string")
+
+    if not isinstance(value, str):
+        raise TypeError("Value must be a string")
+
+    if not key:
+        raise ValueError("Key cannot be empty")
+
     key_bytes = key.encode("utf-8")
     value_bytes = value.encode("utf-8")
 
@@ -35,12 +44,19 @@ def encode_put(key: str, value: str) -> bytes:
 
 
 def encode_delete(key: str) -> bytes:
+    if not isinstance(key, str):
+        raise TypeError("Key must be a string")
+
+    if not key:
+        raise ValueError("Key cannot be empty")
+
     key_bytes = key.encode("utf-8")
 
     payload = struct.pack(">I", len(key_bytes)) + key_bytes
 
     return encode_record(TYPE_DELETE, payload)
 
+    
 
 def encode_record(record_type: int, payload: bytes) -> bytes:
     if len(payload) > MAX_PAYLOAD_SIZE:
