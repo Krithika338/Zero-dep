@@ -381,6 +381,8 @@ def test_compact_removes_old_versions(tmp_path):
 
     db.compact()
 
+    db = StorageEngine(path)
+
     after_size = (tmp_path / "test.db").stat().st_size
 
     assert db.get("name") == "Final"
@@ -399,6 +401,8 @@ def test_compact_removes_deleted_records(tmp_path):
 
     db.compact()
 
+    db = StorageEngine(path)
+
     assert db.get("name") is None
     assert db.get("course") == "Python"
     assert list(db.scan()) == [("course", "Python")]
@@ -416,7 +420,6 @@ def test_compact_preserves_data_after_restart(tmp_path):
     db.compact()
 
     db = StorageEngine(path)
-
     assert list(db.scan()) == [
         ("name", "Krithika"),
         ("course", "Python"),
