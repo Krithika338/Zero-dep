@@ -1,0 +1,40 @@
+Zero-dep Dependency Proof
+
+Runtime third-party dependencies: NONE
+
+The application source code was inspected for imports.
+
+Standard-library modules used:
+
+- argparse
+- collections
+- dataclasses
+- hashlib
+- json
+- math
+- os
+- pathlib
+- re
+- struct
+
+Internal project modules:
+
+- src.search.cache
+- src.search.engine
+- src.search.index
+- src.search.persistence
+- src.search.results
+- src.search.storage_adapter
+- src.search.tokenizer
+- src.storage.engine
+- src.storage.records
+
+requirements.txt is intentionally empty.
+
+.zero-dep.toml is intentionally empty.
+
+Therefore, the application requires only Python and its standard library
+at runtime.
+
+Testing uses pytest, but pytest is a development/testing dependency and is
+not required to run the application itself.
