@@ -1,7 +1,7 @@
 # Zero-dep
 
 An offline, zero-dependency knowledge search and indexing engine built entirely with Python's standard library.
-
+# NOTE : Kindly go to storage engine from the main to access the whole file. It is an integrated version of the search engine and storage engine. 
 ## Features
 
 - Add documents
